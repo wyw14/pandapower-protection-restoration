@@ -5,7 +5,7 @@ F.2 能源系统。本仓库根目录就是一个 Harbor 题包，保留 instruc
 
 ## 运行
 
-已使用 Harbor 0.24.0。需要 Linux/amd64 Docker、支持 Landlock ABI >= 3 的 Linux 内核和允许题包独立 Verifier 以 root 引导隔离进程的环境；候选计算以非特权身份运行。
+已使用 Harbor 0.24.0。需要 Linux/amd64 Docker、Landlock ABI >= 3 和允许题包独立 Verifier 以 root 引导隔离进程的环境；候选计算以非特权身份运行。强制 Landlock 文件白名单、seccomp 与受信资产权限隔离。任一必要隔离步骤失败都拒绝运行，不以放宽文件访问替代隔离。当前依赖视图复制方案未能满足准备预算，因此未作为兼容降级方案纳入题包。
 
 ```sh
 harbor run -p . -a oracle -n 1 -k 1 --job-name oracle-check
@@ -20,15 +20,19 @@ harbor run -p . -a claude-code --ak version=2.1.306 --install-only -n 1 -k 1 --j
 
 ## 返修与诊断
 
-本次返修补齐专家工时元数据和全部测试函数的题面对应说明，将验收入口改为显式的 `python -I -m pytest`，保留精确测试身份与 setup/call/teardown 全通过门槛。专家工时为作者估计，单位分钟，尚无人类计时记录。科学模型、初始应用、参考实现、24 个测试节点、测试输入、断言和容差保持不变。
+本次返修将专家工时写为带单位的字符串并补齐测试函数逐字契约引用，保留显式的 `python -I -m pytest`、精确测试身份及 setup/call/teardown 全通过门槛。专家工时仍是原480分钟作者估计，尚无人类计时记录。
+
+参考解的灵敏度计算会缩小扰动、保持动作序及动作所属外生时段，并检查步长收敛。独立两母线验收改为闭式事件链的解析切向传播，不使用参考解的差分假设。测试保留原24节点，增加4个合法近终点/负荷边界响应、1个未保护热线路接续供电、13种遗漏的拒收等价族，共42节点；同时检查拒收后恢复和三层数值网格的收敛。科学输入域和公开容差保持不变。每个候选比较报告所有数值字段的差异，避免单个相角错误遮挡后续物理机制。
 
 `test.sh` 预先写入 reward=0，表示安装、收集、异常和超时均不能获得成功；全部受信测试通过并完成日志保全后才原子写入 1。不能依据这条初始化命令推断 Oracle 的最终分数。验收过程禁用外部 pytest 插件自动加载，并使用固定的受信账本插件。
 
-审核失败时请同时保留 trial 级 `result.json`、`verifier/install.log`、`verifier/test-stdout.txt`、`verifier/environment.json`、`verifier/pytest.log`、`verifier/junit.xml`、`verifier/outcomes.json` 与 `verifier/grading.json`。`environment.json` 会记录 Python、内核、引导用户和真实隔离策略预检结果；若内核不支持 Landlock ABI >= 3 或容器限制拒绝初始化，会明确报告环境不兼容，不能据此判断参考算法错误。隔离策略失败时不会静默降级。
+审核失败时请同时保留 trial 级 `result.json`、`verifier/install.log`、`verifier/test-stdout.txt`、`verifier/environment.json`、`verifier/pytest.log`、`verifier/junit.xml`、`verifier/outcomes.json` 与 `verifier/grading.json`。`environment.json` 记录 Python、内核、引导用户、实际文件视图，以及读取受信资产、写评分、在私有区外写入和创建网络套接字的访问预检。宿主不支持必要隔离时报告环境不兼容，不能据此判断参考算法错误。
 
 ## 历史评测边界
 
-返修基于公开提交 `d04a639ae268fe33cc4983f6b9e780c57c07e602`。下列旧结果属于返修前版本；返修后的 Oracle、NOP、故障场景和重复运行证据应绑定新提交另行交付。
+本次返修基于公开提交 `e839332716964baeec70bf18128eb5be04cae680`。该版本的官方 Oracle 为24/24、NOP为0/24；一次真实模型运行10/24，Agent超时，14项失败共享绝对参考相角首断言，不能据此认为14个独立领域难点失败，也不符合要求正常结束的难度校准。新增合法近边界反例证明旧Oracle满分不等于参考实现覆盖完整支持域。
+
+下列更早结果来自 `d04a639ae268fe33cc4983f6b9e780c57c07e602` 一系的旧冻结环境；返修后的 Oracle、NOP、故障场景和重复运行证据应绑定新提交另行交付。
 旧冻结环境的官方 Oracle 为 24/24、NOP 为 0/24；NOP 每项在调用阶段失败，setup/teardown 正常。
 旧冻结环境的一次 DeepSeek 运行通过 8/24，reward=0，Agent 耗尽3600秒，Verifier完整完成。API返回模型别名 deepseek-flash，harness为Claude Code2.1.306，effort=max。
 这些是旧环境的真实历史结果，不冒称发布commit已重新调用过模型；发布环境另行执行Oracle/NOP及保存产物重放，证据随交付登记提供。
