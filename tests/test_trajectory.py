@@ -78,6 +78,7 @@ def request(net=None,thermal=None,relays=None,segments=None,sensitivity=None):
 @pytest.mark.parametrize('parallel,capacitance,side,load',[
     (1,0.,'from',5.),(2,0.,'from',5.),(1,2500.,'from',0.),(1,2500.,'to',0.)])
 def test_terminal_ct_and_per_circuit_heat_use_distinct_currents(parallel,capacitance,side,load):
+    """§§ 电气与热模型、保护：并联每回路串流与安装端总电流分别决定温升和动作。"""
     net=network(parallel,capacitance,load,0. if not load else 2.,20. if capacitance else 10.,side)
     r=relay(pickup_a=130. if capacitance else 100.,time_scale_s=3. if capacitance else 40.)
     req=request(net,relays=[r],segments=[segment(90.)])
@@ -90,6 +91,7 @@ def test_terminal_ct_and_per_circuit_heat_use_distinct_currents(parallel,capacit
 
 
 def test_overcurrent_memory_survives_load_steps_and_exponential_reset():
+    """§ 保护与一次重合闸：负荷跨段变化保留记忆，欠拾取期间指数复归并累计失供。"""
     req=request(relays=[relay(initial_memory=.35,exponent=.02,time_scale_s=.2)],
                 segments=[segment(6.),segment(18.,load_scale=.25),segment(60.,load_scale=1.3),segment(10.,load_scale=.8)])
     expected=closed_form(req)
@@ -100,6 +102,7 @@ def test_overcurrent_memory_survives_load_steps_and_exponential_reset():
 
 
 def test_deadtime_reclose_keeps_memory_and_second_trip_locks():
+    """§ 保护与一次重合闸：死区后仅重合一次，保留动作历史并在二次跳闸后锁定。"""
     req=request(relays=[relay(auto_reclose=True,dead_time_s=5.,reclose_c=80.)])
     expected=closed_form(req)
     assert [v['action'] for v in expected['events']]==['trip','reclose','trip']
@@ -108,6 +111,7 @@ def test_deadtime_reclose_keeps_memory_and_second_trip_locks():
 
 
 def test_cooling_gate_delays_reclose_and_preserves_thermal_state():
+    """§ 保护与一次重合闸：重合须同时满足死区和冷却门槛，等待时温度连续演化。"""
     req=request(thermal=[conductor(initial_c=60.,capacity_j_per_mk=20.,limit_c=120.)],
                 relays=[relay(time_scale_s=5.,auto_reclose=True,dead_time_s=3.,reclose_c=30.)],
                 segments=[segment(110.)])
@@ -117,6 +121,7 @@ def test_cooling_gate_delays_reclose_and_preserves_thermal_state():
 
 
 def test_thermal_trip_cooling_reclose_and_solar_energy_balance():
+    """§§ 电气与热模型、保护：太阳吸热与冷却共同决定热跳闸、允许重合及再次热动作。"""
     req=request(thermal=[conductor(capacity_j_per_mk=20.,h_w_per_mk=.2,limit_c=30.)],
                 relays=[relay(pickup_a=10000.,auto_reclose=True,dead_time_s=3.,reclose_c=27.)],
                 segments=[segment(230.,solar_w_per_m=.1)])
@@ -137,6 +142,7 @@ def parallel_request(sensitivity=False,capacitance=0.):
 
 @pytest.mark.parametrize('capacitance',[0.,500.])
 def test_parallel_trip_redistribution_cascades_and_counts_unserved_energy(capacitance):
+    """§§ 电气与热模型、保护、输出：并联支路跳开后重分配电流，引发级联并计入失供。"""
     req=parallel_request(capacitance=capacitance);expected=closed_form(req)
     assert [v['switch'] for v in expected['events']]==[201,305]
     assert expected['unserved_energy_mwh']>0
@@ -144,6 +150,7 @@ def test_parallel_trip_redistribution_cascades_and_counts_unserved_energy(capaci
 
 
 def test_cascade_response_includes_movement_of_both_event_times():
+    """§§ 输入 sensitivity、输出：拾取值变化的总响应须包含两次级联事件的时刻移动。"""
     req=parallel_request(sensitivity=True);expected=analytic_response(req)
     assert abs(expected['sensitivity']['d_event_time_s_d_pickup_a'][1])>1e-3
     assert abs(expected['sensitivity']['d_unserved_energy_mwh_d_pickup_a'])>1e-5
@@ -151,6 +158,7 @@ def test_cascade_response_includes_movement_of_both_event_times():
 
 
 def test_single_trip_event_and_supply_derivatives_have_closed_forms():
+    """§ 输出与精度：单次跳闸的事件时间、终温和累计失供电量导数满足闭式结果。"""
     req=request(sensitivity=dict(switch=201),segments=[segment(80.)])
     expected=closed_form(req)
     net=pp.from_json_string(req['network_json']);r=req['relays'][0];th=req['thermal'][0]
@@ -167,6 +175,7 @@ def test_single_trip_event_and_supply_derivatives_have_closed_forms():
 
 
 def test_reclose_response_includes_cooling_and_memory_dependent_second_trip():
+    """§§ 保护与一次重合闸、输出：冷却和历史记忆耦合重合及二次跳闸的完整轨迹导数。"""
     req=request(thermal=[conductor(initial_c=60.,capacity_j_per_mk=20.,limit_c=120.)],
                 relays=[relay(time_scale_s=5.,auto_reclose=True,dead_time_s=3.,reclose_c=30.)],
                 segments=[segment(110.)],sensitivity=dict(switch=201))
@@ -177,6 +186,7 @@ def test_reclose_response_includes_cooling_and_memory_dependent_second_trip():
 
 
 def test_downstream_isolation_makes_upstream_backup_memory_recover():
+    """§§ 电气与热模型、保护、输出：下游隔离使上游复归，失供需求和两线冷却保持正确。"""
     net=pp.create_empty_network(sn_mva=100.)
     for idx in (41,7,88):pp.create_bus(net,20.,index=idx)
     pp.create_ext_grid(net,41)
@@ -207,6 +217,7 @@ def test_downstream_isolation_makes_upstream_backup_memory_recover():
 
 
 def test_reindexed_network_and_permuted_state_vectors_preserve_physics():
+    """§§ 输入、输出与精度：非排序原生索引和状态列表置换保持物理结果及约定输出顺序。"""
     req=parallel_request(sensitivity=True);a=run(req);compare(a,analytic_response(req))
     net=pp.from_json_string(req['network_json'])
     net.bus=net.bus.iloc[::-1];net.line=net.line.iloc[::-1];net.switch=net.switch.iloc[::-1]
@@ -219,6 +230,7 @@ def test_reindexed_network_and_permuted_state_vectors_preserve_physics():
 
 @pytest.mark.parametrize('change',['duplicate','pickup','memory','reclose','switch','bool','nan'])
 def test_invalid_physical_contract_is_rejected(change):
+    """§ 输入：重复保护、非法引用、越界参数、布尔数值和非有限数必须抛 ValueError。"""
     req=request()
     if change=='duplicate':req['relays'].append(copy.deepcopy(req['relays'][0]))
     elif change=='pickup':req['relays'][0]['pickup_a']=0.
@@ -231,6 +243,7 @@ def test_invalid_physical_contract_is_rejected(change):
 
 
 def test_cli_and_repeated_requests_are_independently_correct():
+    """§ 输出与精度：交错重复调用无状态污染，CLI 成功输出 JSON、失败非零且仅 stderr。"""
     req=request(segments=[segment(45.)]);expected=closed_form(req)
     a=run(req);compare(a,expected)
     other=request(relays=[relay(auto_reclose=True)],segments=[segment(70.)])
@@ -272,6 +285,7 @@ def native_request():
 
 
 def test_native_three_winding_q_limits_and_nonlinear_switching_converge_independently():
+    """§§ 电气与热模型、输出：三绕组和母联、无功限值、非线性热切换符合独立收敛计算。"""
     from numeric_oracle import fixed_step
     req=native_request()
     coarse=fixed_step(req,.2);fine=fixed_step(req,.1)

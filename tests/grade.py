@@ -3,10 +3,12 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import platform
 import signal
 import stat
 import subprocess
 import sys
+import sysconfig
 import tempfile
 import time
 
@@ -34,7 +36,8 @@ def reward(value):
     os.replace(name, target)
 
 reward(0)
-record = {'verifier_version': 'isolated-rpc-v1', 'reward': 0, 'timed_out': False}
+record = {'verifier_version': 'isolated-rpc-v2', 'reward': 0, 'timed_out': False,
+          'verdict': 'bootstrap_error', 'stage': 'manifest'}
 
 def terminate(signum, frame):
     raise InterruptedError('Verifier received signal ' + str(signum))
@@ -54,9 +57,39 @@ def cleanup():
     if process is not None:
         process.wait(timeout=5)
 
+def environment_check():
+    details = {'python': platform.python_version(), 'platform': sys.platform,
+               'architecture': platform.machine(), 'kernel': platform.release(),
+               'bootstrap_uid': os.geteuid(), 'required_landlock_abi': 3}
+    try:
+        if os.geteuid() != 0:
+            raise RuntimeError('Verifier bootstrap must run as root; candidate runs as nobody')
+        probe = Path(tempfile.mkdtemp(prefix='verifier-probe-'))
+        probe.chmod(0o755)
+        scratch, inputs = probe / 'scratch', probe / 'inputs'
+        scratch.mkdir(mode=0o700)
+        inputs.mkdir(mode=0o755)
+        os.chown(scratch, 65534, 65534)
+        command = [sys.executable, '-I', str(HERE / 'environment_probe.py'),
+                   '/app/src', str(scratch), str(inputs)]
+        result = subprocess.run(command, capture_output=True, text=True, timeout=10)
+        details['probe_exit_code'] = result.returncode
+        if result.returncode != 0:
+            details['probe_stderr'] = result.stderr[-12000:]
+            lines = result.stderr.strip().splitlines()
+            reason = lines[-1] if lines else 'empty stderr, exit ' + str(result.returncode)
+            raise RuntimeError('Isolation preflight failed; see environment.json: ' + reason)
+        details.update(json.loads(result.stdout))
+    except BaseException as exc:
+        details['compatible'] = False
+        details['error'] = type(exc).__name__ + ': ' + str(exc)
+        raise
+    else:
+        details['compatible'] = True
+    finally:
+        (LOGS / 'environment.json').write_text(json.dumps(details, indent=2), encoding='utf-8')
+
 try:
-    if os.geteuid() != 0:
-        raise RuntimeError('Verifier bootstrap must run as root; candidate runs as nobody')
     manifest = json.loads((HERE / 'test-contract.json').read_text(encoding='utf-8'))
     expected = manifest['nodeids']
     if not expected or len(expected) != len(set(expected)):
@@ -66,13 +99,30 @@ try:
     for name, digest in manifest['test_files_sha256'].items():
         if hashlib.sha256((HERE / name).read_bytes()).hexdigest() != digest:
             raise RuntimeError('Test source differs from collected contract: ' + name)
+    plugin = Path(sysconfig.get_path('purelib')) / '_harbor_energy_ledger.py'
+    if hashlib.sha256(plugin.read_bytes()).hexdigest() != manifest['test_files_sha256']['verifier_ledger.py']:
+        raise RuntimeError('Installed trusted pytest ledger differs from contract')
+    record['stage'] = 'environment'
+    record['verdict'] = 'environment_error'
+    environment_check()
     report = private / 'outcomes.json'
     env = {'PATH': '/usr/local/bin:/usr/bin:/bin', 'LANG': 'C.UTF-8',
         'HOME': str(private), 'MPLCONFIGDIR': str(private / 'mpl'), 'MPLBACKEND': 'Agg',
         'OPENBLAS_NUM_THREADS': '1', 'OMP_NUM_THREADS': '1', 'PYTHONDONTWRITEBYTECODE': '1',
-        'PYTEST_DISABLE_PLUGIN_AUTOLOAD': '1', 'CANDIDATE_PID_LEDGER': str(pids)}
+        'PYTEST_DISABLE_PLUGIN_AUTOLOAD': '1', 'CANDIDATE_PID_LEDGER': str(pids),
+        'TRUSTED_OUTCOMES_PATH': str(report)}
+    entry = sys.argv[1:] or [sys.executable, '-I', '-m', 'pytest']
+    if entry != [sys.executable, '-I', '-m', 'pytest']:
+        raise RuntimeError('Expected the isolated python -m pytest entry point')
+    command = entry + [str(HERE / 'test_trajectory.py'), '-q', '-p', '_harbor_energy_ledger',
+        '-p', 'no:cacheprovider', '--tb=short', '-c', str(HERE / 'pytest.ini'),
+        '--confcutdir=' + str(HERE), '--rootdir=' + str(HERE),
+        '--junitxml=' + str(LOGS / 'junit.xml')]
+    record['pytest_command'] = command
+    record['stage'] = 'tests'
+    record['verdict'] = 'test_failure'
     with open(LOGS / 'pytest.log', 'wb') as output:
-        process = subprocess.Popen([sys.executable, '-I', str(HERE / 'trusted_runner.py'), str(report)],
+        process = subprocess.Popen(command,
             stdout=output, stderr=subprocess.STDOUT, cwd='/', env=env, start_new_session=True)
         try:
             process.wait(timeout=270)
@@ -86,6 +136,8 @@ try:
         collected, outcomes = data['collected'], data['outcomes']
         record['collected_tests'] = len(collected)
         record['completed_tests'] = len(outcomes)
+        record['failed_phases'] = len(data['failures'])
+        record['warnings_count'] = len(data['warnings'])
         record['passed_tests'] = sum(phases == [['setup', 'passed'], ['call', 'passed'], ['teardown', 'passed']]
                                      for phases in outcomes.values())
         valid = (not record['timed_out'] and process.returncode == 0 and data['exitstatus'] == 0
@@ -93,14 +145,34 @@ try:
             and set(outcomes) == set(expected) and record['passed_tests'] == len(expected))
         if valid:
             record['reward'] = 1
+            record['verdict'] = 'passed'
+        record['stage'] = 'complete'
     else:
+        record['verdict'] = 'timeout' if record['timed_out'] else 'report_error'
         record['grader_error'] = 'Trusted test report absent or oversized'
 except BaseException as exc:
     record['reward'] = 0
     record['grader_error'] = type(exc).__name__ + ': ' + str(exc)
 finally:
-    cleanup()
+    try:
+        cleanup()
+    except BaseException as exc:
+        record['reward'] = 0
+        record['verdict'] = 'cleanup_error'
+        record['cleanup_error'] = type(exc).__name__ + ': ' + str(exc)
     record['elapsed_seconds'] = time.monotonic() - START
-    reward(record['reward'])
-    (LOGS / 'grading.json').write_text(json.dumps(record, indent=2), encoding='utf-8')
-    print(json.dumps(record))
+    try:
+        # Evidence and output must succeed before the final success commit.
+        # In particular, a failed diagnostic write must never leave reward=1.
+        (LOGS / 'grading.json').write_text(json.dumps(record, indent=2), encoding='utf-8')
+        print(json.dumps(record), flush=True)
+        reward(record['reward'])
+    except BaseException as exc:
+        record['reward'] = 0
+        record['verdict'] = 'finalization_error'
+        record['finalization_error'] = type(exc).__name__ + ': ' + str(exc)
+        try:
+            (LOGS / 'grading.json').write_text(json.dumps(record, indent=2), encoding='utf-8')
+        finally:
+            reward(0)
+        raise SystemExit(2)

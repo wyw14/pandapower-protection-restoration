@@ -18,9 +18,17 @@ harbor run -p . -a claude-code --ak version=2.1.306 --install-only -n 1 -k 1 --j
 
 题面给出完整数学/物理模型、接口、边界及数值容差；README 不替代题面。Docker 构建只复制运行源码和运行依赖，不复制 tests/solution。独立 Verifier 在候选隔离进程外执行测试。
 
-## 评测记录与边界
+## 返修与诊断
 
-本包从已冻结的 v4-005/energy 制作发布副本，题面、应用初始源码、全部测试和参考解保持字节一致；仅去除本机 Agent 预装与固定网段，补齐提交者元数据及 Git 文件模式。
+本次返修补齐专家工时元数据和全部测试函数的题面对应说明，将验收入口改为显式的 `python -I -m pytest`，保留精确测试身份与 setup/call/teardown 全通过门槛。专家工时为作者估计，单位分钟，尚无人类计时记录。科学模型、初始应用、参考实现、24 个测试节点、测试输入、断言和容差保持不变。
+
+`test.sh` 预先写入 reward=0，表示安装、收集、异常和超时均不能获得成功；全部受信测试通过并完成日志保全后才原子写入 1。不能依据这条初始化命令推断 Oracle 的最终分数。验收过程禁用外部 pytest 插件自动加载，并使用固定的受信账本插件。
+
+审核失败时请同时保留 trial 级 `result.json`、`verifier/install.log`、`verifier/test-stdout.txt`、`verifier/environment.json`、`verifier/pytest.log`、`verifier/junit.xml`、`verifier/outcomes.json` 与 `verifier/grading.json`。`environment.json` 会记录 Python、内核、引导用户和真实隔离策略预检结果；若内核不支持 Landlock ABI >= 3 或容器限制拒绝初始化，会明确报告环境不兼容，不能据此判断参考算法错误。隔离策略失败时不会静默降级。
+
+## 历史评测边界
+
+返修基于公开提交 `d04a639ae268fe33cc4983f6b9e780c57c07e602`。下列旧结果属于返修前版本；返修后的 Oracle、NOP、故障场景和重复运行证据应绑定新提交另行交付。
 旧冻结环境的官方 Oracle 为 24/24、NOP 为 0/24；NOP 每项在调用阶段失败，setup/teardown 正常。
 旧冻结环境的一次 DeepSeek 运行通过 8/24，reward=0，Agent 耗尽3600秒，Verifier完整完成。API返回模型别名 deepseek-flash，harness为Claude Code2.1.306，effort=max。
 这些是旧环境的真实历史结果，不冒称发布commit已重新调用过模型；发布环境另行执行Oracle/NOP及保存产物重放，证据随交付登记提供。

@@ -26,6 +26,7 @@ timeout_sec = 300
 [metadata]
 category = "F.2 能源系统"
 difficulty = "hard"
+expert_time_estimate = 480.0  # Author estimate in minutes, not a measured solve time.
 tags = ["hybrid-system", "relay-memory", "auto-reclose", "unserved-energy", "pickup-sensitivity"]
 source_repository = "https://github.com/e2nIEE/pandapower"
 source_version = "v3.2.1"
