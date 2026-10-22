@@ -31,6 +31,7 @@ harbor run -p . -a claude-code --ak version=2.1.306 --install-only -n 1 -k 1 --j
 审核失败时请同时保留 trial 级 `result.json`、`verifier/install.log`、`verifier/test-stdout.txt`、`verifier/environment.json`、`verifier/pytest.log`、`verifier/junit.xml`、`verifier/outcomes.json` 与 `verifier/grading.json`。`environment.json` 记录 Python、内核、引导用户、实际文件视图，以及读取受信资产、写评分、在私有区外写入和创建网络套接字的访问预检。宿主不支持必要隔离时报告环境不兼容，不能据此判断参考算法错误。
 
 候选异常跨进程传输按真实内置异常继承族分类，保留自定义子类的 ValueError、TypeError、RuntimeError 和 NotImplementedError 语义；未知异常使用独立错误类型，不能冒充声明的异常族。此修复不改变科学节点、输入域、公开容差和全项通过门槛。
+多继承异常保留所有受支持的真实父族，受信端仅按固定白名单重建本地异常类型；畸形成员掩码明确拒绝，不加载候选异常类。
 
 ## 历史评测边界
 

@@ -22,6 +22,37 @@ class RemoteCandidateError(Exception):
     """An unrecognized candidate exception, outside the declared error families."""
 
 
+def _build_exception_types():
+    """Restore only the fixed built-in families, including multiple inheritance."""
+    families = (NotImplementedError, ValueError, TypeError, RuntimeError)
+    result = {0: RemoteCandidateError}
+    for mask in range(1, 16):
+        if mask & 1 and not mask & 8:
+            continue  # NotImplementedError always also belongs to RuntimeError.
+        bases = tuple(
+            base
+            for index, base in enumerate(families)
+            if mask & (1 << index) and not (index == 3 and mask & 1)
+        )
+        result[mask] = (
+            bases[0]
+            if len(bases) == 1
+            else type("RemoteBuiltinFamilyError", bases, {"__module__": __name__})
+        )
+    return result
+
+
+_EXCEPTION_TYPES = _build_exception_types()
+
+
+def exception_from_response(answer):
+    """Reject malformed family masks without importing candidate exception types."""
+    mask = answer.get("exception_mask")
+    if type(mask) is not int or mask not in _EXCEPTION_TYPES:
+        return RemoteCandidateError("Invalid candidate exception family mask")
+    return _EXCEPTION_TYPES[mask](answer.get("message", "Candidate exception"))
+
+
 def kill_all():
     for process in PROCESSES:
         try:
@@ -159,13 +190,7 @@ class Candidate:
         ) or canonical(answer.get("kwargs_after")) != canonical(before["kwargs"]):
             raise AssertionError("Candidate modified its input arguments")
         if answer.get("ok") is False:
-            kind = {
-                "ValueError": ValueError,
-                "TypeError": TypeError,
-                "RuntimeError": RuntimeError,
-                "NotImplementedError": NotImplementedError,
-            }.get(answer.get("exception"), RemoteCandidateError)
-            raise kind(answer.get("message", "Candidate exception"))
+            raise exception_from_response(answer)
         if answer.get("ok") is not True:
             raise RuntimeError("Invalid candidate response")
         return unpack(answer["value"])

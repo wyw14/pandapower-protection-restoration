@@ -51,9 +51,9 @@
   ],
   "test_files_sha256": {
     "analytic_oracle.py": "d6693e0c3d34021c3621af67faeef5876e651040d4dd7b5e510277a97eef0461",
-    "candidate_proxy.py": "b93cd122d95251267f587abf849202aba5e95ea37de2f3ad00e3bb2101d01214",
+    "candidate_proxy.py": "b35dbf41f6c5a52ae0570a882616f590a0c62d537d8c4a648305b7f06c3a54b3",
     "candidate_sandbox.py": "6b881d897732f6fcee80ce51008f87351d512cf229244a6221a91acec242c490",
-    "candidate_worker.py": "7f14fa32d40d0fa2bb18540517abacb87dfd1db2b015fead0ae62d9dfcbbad00",
+    "candidate_worker.py": "7fc228f8979bacc811ece29e69bd3bdb29556da76dc3d642bc64d6401cfa762a",
     "grade.py": "3975ae05fe892772b6b61754c7124c2a52a6880a17d70e01fb906c7a567250e7",
     "numeric_oracle.py": "6f7fa1dfe8ba2cb5115429b8a60251f767d667223ff21392e92086a9b0bed710",
     "pytest.ini": "1c4ea57d78b41c8cdb046467d2069100704adaadfd72025e54ea5c0e1010092c",

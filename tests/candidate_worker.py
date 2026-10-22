@@ -13,9 +13,10 @@ from candidate_sandbox import restrict
 MAX_WIRE = 16 * 1024 * 1024
 
 # Capture actual built-in classes before importing untrusted candidate modules.
-# The protocol carries a supported exception family, not a candidate class name.
+# The protocol carries supported exception memberships, not a candidate class name.
 _EXCEPTION_TYPE = type
 _EX_IS_SUBCLASS = issubclass
+_ENUMERATE = enumerate
 _EXCEPTION_FAMILIES = (
     (NotImplementedError, "NotImplementedError"),
     (ValueError, "ValueError"),
@@ -28,13 +29,16 @@ def exception_response(exc):
     """Preserve built-in exception families across the isolated RPC boundary."""
     actual_type = _EXCEPTION_TYPE(exc)
     family = None
-    for base, name in _EXCEPTION_FAMILIES:
+    family_mask = 0
+    for index, (base, name) in _ENUMERATE(_EXCEPTION_FAMILIES):
         if _EX_IS_SUBCLASS(actual_type, base):
-            family = name
-            break
+            family_mask |= 1 << index
+            if family is None:
+                family = name
     return {
         "ok": False,
         "exception": family,
+        "exception_mask": family_mask,
         "exception_type": actual_type.__name__,
         "message": str(exc)[:2000],
     }
