@@ -1,0 +1,32 @@
+artifacts = ["/app/src"]
+schema_version = "1.3"
+
+[task]
+name = "wyw14/pandapower-protection-restoration"
+description = "原生电网中的保护记忆、级联切换、冷却重合闸与失供响应"
+authors = [{ name = "wyw14" }]
+keywords = ["pandapower", "AC", "relay-memory", "auto-reclose", "EENS", "event-sensitivity"]
+
+[agent]
+timeout_sec = 3600
+
+[environment]
+build_timeout_sec = 900
+cpus = 1
+memory_mb = 2048
+storage_mb = 4096
+gpus = 0
+allow_internet = true
+
+[verifier]
+environment_mode = "separate"
+user = "root"
+timeout_sec = 300
+
+[metadata]
+category = "F.2 能源系统"
+difficulty = "hard"
+tags = ["hybrid-system", "relay-memory", "auto-reclose", "unserved-energy", "pickup-sensitivity"]
+source_repository = "https://github.com/e2nIEE/pandapower"
+source_version = "v3.2.1"
+task_type = "new-application-feature"
