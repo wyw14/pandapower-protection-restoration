@@ -646,27 +646,8 @@ def native_request():
     ]:
         pp.create_bus(net, kv, index=idx)
     pp.create_ext_grid(net, 41)
-    pp.create_transformer3w_from_parameters(
-        net,
-        41,
-        7,
-        301,
-        vn_hv_kv=110.0,
-        vn_mv_kv=20.0,
-        vn_lv_kv=10.0,
-        sn_hv_mva=40.0,
-        sn_mv_mva=25.0,
-        sn_lv_mva=15.0,
-        vk_hv_percent=10.0,
-        vk_mv_percent=10.0,
-        vk_lv_percent=10.0,
-        vkr_hv_percent=0.4,
-        vkr_mv_percent=0.4,
-        vkr_lv_percent=0.4,
-        pfe_kw=0.0,
-        i0_percent=0.0,
-        index=11,
-    )
+    # Pinned upstream standard types retain real excitation and phase shift.
+    pp.create_transformer3w(net, 41, 7, 301, "63/25/38 MVA 110/20/10 kV", index=11)
     pp.create_switch(net, 7, 88, "b", closed=True, index=61)
     pp.create_line_from_parameters(net, 88, 2, 3.0, 0.25, 0.2, 300.0, 1.0, index=83)
     pp.create_line_from_parameters(net, 88, 2, 3.0, 0.3, 0.24, 300.0, 1.0, index=4)
@@ -675,21 +656,10 @@ def native_request():
     pp.create_load(net, 2, 7.5, 3.75, scaling=0.8, index=9)
     pp.create_load(net, 301, 1.9, 0.57, index=3)
     pp.create_sgen(net, 2, 0.05, 0.02, index=91)
-    pp.create_transformer_from_parameters(
-        net,
-        301,
-        400,
-        sn_mva=1.0,
-        vn_hv_kv=10.0,
-        vn_lv_kv=0.4,
-        vk_percent=4.0,
-        vkr_percent=1.0,
-        pfe_kw=0.0,
-        i0_percent=0.0,
-        index=222,
-    )
-    pp.create_load(net, 400, 0.1, 0.03, index=54)
+    pp.create_transformer(net, 88, 400, "0.4 MVA 20/0.4 kV", index=222)
+    pp.create_load(net, 400, 0.30, 0.10, index=54)
     pp.create_gen(net, 2, 0.4, vm_pu=1.03, min_q_mvar=-0.3, max_q_mvar=0.4, index=72)
+    pp.create_gen(net, 301, 0.1, vm_pu=1.01, min_q_mvar=-0.1, max_q_mvar=0.1, index=5)
     th = [
         conductor(
             4, initial_c=35.0, alpha_per_k=0.003, emissivity=0.6, capacity_j_per_mk=45.0
@@ -725,7 +695,8 @@ def test_native_three_winding_q_limits_and_nonlinear_switching_converge_independ
     differences = compare(coarse, fine)
     assert not differences, "\n".join(differences)
     assert len(fine["events"]) == 1 and fine["events"][0]["switch"] == 201
-    assert fine["segments"][0]["gen_q_mvar"][0] == pytest.approx(0.4, abs=2e-5)
+    assert fine["gen_order"] == [72, 5]
+    assert fine["segments"][0]["gen_q_mvar"] == pytest.approx([0.4, 0.1], abs=2e-5)
     differences = compare(run(req), finer)
     assert not differences, "\n".join(differences)
 

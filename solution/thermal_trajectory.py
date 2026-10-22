@@ -154,13 +154,15 @@ class Grid:
             return self.cache[1]
         for item, resistance in zip(self.thermal, r):
             self.net.line.at[item["line"], "r_ohm_per_km"] = resistance
+        # A phase-aware cold start retains native transformer phase shifts;
+        # a zero-angle flat start can converge to a balanced low-voltage root.
         try:
             try:
                 solve_equilibrium(
-                    self.net, init="results" if self.cache is not None else "flat"
+                    self.net, init="results" if self.cache is not None else "dc"
                 )
             except Exception:
-                solve_equilibrium(self.net, init="flat")
+                solve_equilibrium(self.net, init="dc")
         except Exception as exc:
             raise RuntimeError("AC equilibrium failed") from exc
         series = []

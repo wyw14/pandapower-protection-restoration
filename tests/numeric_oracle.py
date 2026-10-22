@@ -33,7 +33,7 @@ def point(original, thermal, relays, segment, T, closed):
         lightsim2grid=False,
         consider_line_temperature=False,
         tdpf=False,
-        init="flat",
+        init="dc",
         tolerance_mva=1e-10,
         max_iteration=50,
     )
