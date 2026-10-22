@@ -2,6 +2,7 @@
 set -euo pipefail
 umask 077
 reward=/logs/verifier/reward.txt
+JUNIT_REPORT=/logs/verifier/junit.xml
 workspace=
 active_pgid=
 watchdog_pgid=
@@ -96,7 +97,7 @@ finish() {
     if [[ "$status" != 0 || "$complete" != 1 ]]; then
         reset_reward || status=1
         if [[ ! -L /logs && ! -L /logs/verifier && -d /logs/verifier ]]; then
-            printf '{"reward":0,"verdict":"bootstrap_or_interruption_error","stage":"%s","shell_exit_code":%s}\n' \
+            printf '{"reward":0,"completion_state":"INCOMPLETE","verdict":"bootstrap_or_interruption_error","stage":"%s","shell_exit_code":%s}\n' \
                 "$stage" "$status" > /logs/verifier/bootstrap-error.json
         fi
     fi
@@ -116,7 +117,7 @@ interrupt() {
 }
 
 run_stage() {
-    setsid "$@" &
+    setsid "$@" <&0 &
     active_pgid=$!
     local status=0
     wait "$active_pgid" || status=$?
@@ -133,6 +134,15 @@ trap 'interrupt 143' TERM
 setsid /bin/bash -c 'sleep 295; kill -TERM "$1"' watchdog "$$" &
 watchdog_pgid=$!
 reset_reward
+# Only reports created by this invocation may establish completion. Refuse
+# linked or non-file outputs rather than inheriting another run's evidence.
+for report in "$JUNIT_REPORT" /logs/verifier/outcomes.json /logs/verifier/grading.json /logs/verifier/completion.json; do
+    if [[ -L "$report" || ( -e "$report" && ! -f "$report" ) ]]; then
+        printf 'INCOMPLETE: unsafe prior report: %s\n' "$report" >&2
+        exit 1
+    fi
+    rm -f -- "$report"
+done
 workspace="$(mktemp -d /tmp/trusted-verifier-XXXXXXXX)"
 chmod 0700 "$workspace"
 export PRIVATE_VERIFIER_WORKSPACE="$workspace"
@@ -148,6 +158,33 @@ run_stage /usr/bin/timeout --signal=TERM --kill-after=2s 15s /bin/bash -c '
 stage=grade
 # Keep the shell alive so signals during bootstrap and finalization also
 # force zero and remove descendants. The verifier owns its own test deadline.
-run_stage /usr/local/bin/python -B -I /tests/grade.py /usr/local/bin/python -B -I -m pytest
+run_stage /usr/local/bin/python -B -I /tests/grade.py --junitxml="$JUNIT_REPORT" /usr/local/bin/python -B -I -m pytest
+stage=completion
+if ! test -s "$JUNIT_REPORT"; then
+    printf '%s\n' 'INCOMPLETE: current JUnit report is absent or empty' >&2
+    exit 1
+fi
+run_stage /usr/local/bin/python -B -I - "$JUNIT_REPORT" <<'PY'
+import json
+from pathlib import Path
+import sys
+import xml.etree.ElementTree as ET
+
+sys.path.insert(0, "/tests")
+from validate_completion import validate_seal
+
+logs = Path("/logs/verifier")
+try:
+    report = ET.parse(sys.argv[1])
+    completion = validate_seal(Path("/tests/test-contract.json"), logs, report)
+except Exception as error:
+    completion = {"completion_state": "INCOMPLETE", "reward": 0,
+                  "error": type(error).__name__ + ": " + str(error)}
+    (logs / "completion.json").write_text(json.dumps(completion, indent=2), encoding="utf-8")
+    print(json.dumps(completion), file=sys.stderr)
+    raise SystemExit(1)
+(logs / "completion.json").write_text(json.dumps(completion, indent=2), encoding="utf-8")
+print(json.dumps(completion))
+PY
 complete=1
 stage=complete

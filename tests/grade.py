@@ -1,5 +1,6 @@
 """Root-owned verdict from exact trusted test identities and all three phases."""
 
+import argparse
 import hashlib
 import json
 import os
@@ -12,6 +13,7 @@ import sys
 import sysconfig
 import tempfile
 import time
+import xml.etree.ElementTree as ET
 
 HERE = Path(__file__).resolve().parent
 LOGS = Path("/logs/verifier")
@@ -61,6 +63,7 @@ record = {
     "timed_out": False,
     "verdict": "bootstrap_error",
     "stage": "manifest",
+    "completion_state": "INCOMPLETE",
 }
 
 
@@ -117,6 +120,12 @@ def environment_check():
 
 
 try:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--junitxml", type=Path, required=True)
+    parser.add_argument("entry", nargs=argparse.REMAINDER)
+    arguments = parser.parse_args()
+    if arguments.junitxml != LOGS / "junit.xml":
+        raise RuntimeError("JUnit report must use the trusted verifier output")
     manifest = json.loads((HERE / "test-contract.json").read_text(encoding="utf-8"))
     expected = manifest["nodeids"]
     if not expected or len(expected) != len(set(expected)):
@@ -151,7 +160,7 @@ try:
         "CANDIDATE_PID_LEDGER": str(pids),
         "TRUSTED_OUTCOMES_PATH": str(report),
     }
-    entry = sys.argv[1:] or [sys.executable, "-B", "-I", "-m", "pytest"]
+    entry = arguments.entry
     if entry != [sys.executable, "-B", "-I", "-m", "pytest"]:
         raise RuntimeError("Expected the isolated python -m pytest entry point")
     command = entry + [
@@ -166,7 +175,7 @@ try:
         str(HERE / "pytest.ini"),
         "--confcutdir=" + str(HERE),
         "--rootdir=" + str(HERE),
-        "--junitxml=" + str(LOGS / "junit.xml"),
+        "--junitxml=" + str(arguments.junitxml),
     ]
     record["pytest_command"] = command
     record["stage"] = "tests"
@@ -201,17 +210,14 @@ try:
             phases == [["setup", "passed"], ["call", "passed"], ["teardown", "passed"]]
             for phases in outcomes.values()
         )
-        valid = (
-            not record["timed_out"]
-            and process.returncode == 0
-            and data["exitstatus"] == 0
-            and not data["collection_errors"]
-            and sorted(collected) == sorted(expected)
-            and set(outcomes) == set(expected)
-            and record["passed_tests"] == len(expected)
+        from validate_completion import validate_report
+
+        record.update(
+            validate_report(
+                manifest, data, ET.parse(arguments.junitxml), process.returncode
+            )
         )
-        if valid:
-            record["reward"] = 1
+        if record["reward"] == 1:
             record["verdict"] = "passed"
         record["stage"] = "complete"
     else:
