@@ -18,6 +18,10 @@ HERE = Path(__file__).resolve().parent
 PROCESSES = []
 
 
+class RemoteCandidateError(Exception):
+    """An unrecognized candidate exception, outside the declared error families."""
+
+
 def kill_all():
     for process in PROCESSES:
         try:
@@ -160,7 +164,7 @@ class Candidate:
                 "TypeError": TypeError,
                 "RuntimeError": RuntimeError,
                 "NotImplementedError": NotImplementedError,
-            }.get(answer.get("exception"), RuntimeError)
+            }.get(answer.get("exception"), RemoteCandidateError)
             raise kind(answer.get("message", "Candidate exception"))
         if answer.get("ok") is not True:
             raise RuntimeError("Invalid candidate response")

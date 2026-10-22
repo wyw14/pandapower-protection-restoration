@@ -12,6 +12,33 @@ from candidate_sandbox import restrict
 
 MAX_WIRE = 16 * 1024 * 1024
 
+# Capture actual built-in classes before importing untrusted candidate modules.
+# The protocol carries a supported exception family, not a candidate class name.
+_EXCEPTION_TYPE = type
+_EX_IS_SUBCLASS = issubclass
+_EXCEPTION_FAMILIES = (
+    (NotImplementedError, "NotImplementedError"),
+    (ValueError, "ValueError"),
+    (TypeError, "TypeError"),
+    (RuntimeError, "RuntimeError"),
+)
+
+
+def exception_response(exc):
+    """Preserve built-in exception families across the isolated RPC boundary."""
+    actual_type = _EXCEPTION_TYPE(exc)
+    family = None
+    for base, name in _EXCEPTION_FAMILIES:
+        if _EX_IS_SUBCLASS(actual_type, base):
+            family = name
+            break
+    return {
+        "ok": False,
+        "exception": family,
+        "exception_type": actual_type.__name__,
+        "message": str(exc)[:2000],
+    }
+
 
 def main():
     """Apply mandatory isolation before loading or executing candidate code."""
@@ -63,11 +90,7 @@ def main():
             value = getattr(candidate, request["function"])(*args, **kwargs)
             message = {"ok": True, "value": pack(value)}
         except Exception as exc:
-            message = {
-                "ok": False,
-                "exception": type(exc).__name__,
-                "message": str(exc)[:2000],
-            }
+            message = exception_response(exc)
         message["args_after"] = pack(args)
         message["kwargs_after"] = pack(kwargs)
         response.write(

@@ -30,6 +30,8 @@ harbor run -p . -a claude-code --ak version=2.1.306 --install-only -n 1 -k 1 --j
 
 审核失败时请同时保留 trial 级 `result.json`、`verifier/install.log`、`verifier/test-stdout.txt`、`verifier/environment.json`、`verifier/pytest.log`、`verifier/junit.xml`、`verifier/outcomes.json` 与 `verifier/grading.json`。`environment.json` 记录 Python、内核、引导用户、实际文件视图，以及读取受信资产、写评分、在私有区外写入和创建网络套接字的访问预检。宿主不支持必要隔离时报告环境不兼容，不能据此判断参考算法错误。
 
+候选异常跨进程传输按真实内置异常继承族分类，保留自定义子类的 ValueError、TypeError、RuntimeError 和 NotImplementedError 语义；未知异常使用独立错误类型，不能冒充声明的异常族。此修复不改变科学节点、输入域、公开容差和全项通过门槛。
+
 ## 历史评测边界
 
 本次返修基于公开提交 `e839332716964baeec70bf18128eb5be04cae680`。该版本的官方 Oracle 为24/24、NOP为0/24；一次真实模型运行10/24，Agent超时，14项失败共享绝对参考相角首断言，不能据此认为14个独立领域难点失败，也不符合要求正常结束的难度校准。新增合法近边界反例证明旧Oracle满分不等于参考实现覆盖完整支持域。
