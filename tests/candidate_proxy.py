@@ -44,11 +44,13 @@ class Candidate:
         os.chown(self.scratch, 65534, 65534)
         self.inputs = self.folder / "inputs"
         self.inputs.mkdir(mode=0o755)
+        self.inputs.chmod(0o755)
         self.abi = None
 
     def _command(self, mode):
         return [
             sys.executable,
+            "-B",
             "-I",
             str(HERE / "candidate_worker.py"),
             "/app/src",

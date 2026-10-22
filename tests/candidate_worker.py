@@ -36,7 +36,7 @@ def main():
             "import runpy,sys;sys.path.insert(0,sys.argv[1]);"
             'runpy.run_path(sys.argv[1]+"/candidate.py",run_name="__main__")'
         )
-        os.execv(sys.executable, [sys.executable, "-I", "-c", bootstrap, source])
+        os.execv(sys.executable, [sys.executable, "-B", "-I", "-c", bootstrap, source])
     sys.path.insert(0, source)
     spec = importlib.util.spec_from_file_location(
         "candidate", Path(source) / "candidate.py"

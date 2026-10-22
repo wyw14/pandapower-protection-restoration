@@ -19,9 +19,22 @@ LOGS.mkdir(parents=True, exist_ok=True)
 LOGS.chmod(0o700)
 START = time.monotonic()
 process = None
-private = Path(tempfile.mkdtemp(prefix="trusted-verifier-"))
+private_setting = os.environ.get("PRIVATE_VERIFIER_WORKSPACE")
+private = (
+    Path(private_setting)
+    if private_setting is not None
+    else Path(tempfile.mkdtemp(prefix="trusted-verifier-"))
+)
+if (
+    private.is_symlink()
+    or not private.is_dir()
+    or private.stat().st_uid != 0
+    or private.stat().st_mode & 0o077
+):
+    raise RuntimeError("Unsafe trusted verifier workspace")
 private.chmod(0o700)
 pids = private / "candidate-pids.txt"
+pytest_pids = private / "pytest-pids.txt"
 
 
 def reward(value):
@@ -30,9 +43,8 @@ def reward(value):
         output.write(str(value) + "\n")
     os.chmod(name, 0o600)
     target = LOGS / "reward.txt"
-    # Docker Desktop maps mode 0444 to the Windows read-only attribute, which
-    # prevents replace even for container root. Root-only 0600 plus the probed
-    # isolation policy prevents candidate access without that host incompatibility.
+    # Internal updates stay 0600; test.sh seals the final result at 0444.
+    # On Docker Desktop a prior final 0444 may be a Windows read-only bit.
     if (
         target.exists()
         and not target.is_symlink()
@@ -139,8 +151,8 @@ try:
         "CANDIDATE_PID_LEDGER": str(pids),
         "TRUSTED_OUTCOMES_PATH": str(report),
     }
-    entry = sys.argv[1:] or [sys.executable, "-I", "-m", "pytest"]
-    if entry != [sys.executable, "-I", "-m", "pytest"]:
+    entry = sys.argv[1:] or [sys.executable, "-B", "-I", "-m", "pytest"]
+    if entry != [sys.executable, "-B", "-I", "-m", "pytest"]:
         raise RuntimeError("Expected the isolated python -m pytest entry point")
     command = entry + [
         str(HERE / "test_trajectory.py"),
@@ -168,6 +180,7 @@ try:
             env=env,
             start_new_session=True,
         )
+        pytest_pids.write_text(str(process.pid) + "\n", encoding="ascii")
         try:
             process.wait(timeout=270)
         except subprocess.TimeoutExpired:

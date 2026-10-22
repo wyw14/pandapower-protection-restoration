@@ -229,6 +229,81 @@ def test_cooling_gate_delays_reclose_and_preserves_thermal_state():
     assert not differences, "\n".join(differences)
 
 
+@pytest.mark.parametrize(
+    "omitted", [("solar_w_per_m",), ("load_scale",), ("solar_w_per_m", "load_scale")]
+)
+def test_optional_weather_and_load_defaults_preserve_the_complete_event_chain(omitted):
+    """“solar 非负、缺省 0；load_scale 非负、缺省 1”：省略与显式两种请求分别核对解析重合轨迹。"""
+    explicit = request(
+        relays=[relay(auto_reclose=True)],
+        segments=[segment(12.0), segment(78.0)],
+        sensitivity=dict(switch=201),
+    )
+    expected = analytic_response(explicit)
+    assert [event["action"] for event in expected["events"]] == [
+        "trip",
+        "reclose",
+        "trip",
+    ]
+    implicit = copy.deepcopy(explicit)
+    for weather in implicit["segments"]:
+        for key in omitted:
+            del weather[key]
+    explicit_differences = compare(run(explicit), expected)
+    implicit_differences = compare(run(implicit), expected)
+    assert not explicit_differences, "\n".join(explicit_differences)
+    assert not implicit_differences, "\n".join(implicit_differences)
+
+
+def test_native_zip_and_temperature_flags_do_not_change_the_defined_model():
+    """“忽略 load 的恒阻抗/恒电流百分比及 line 的 temperature/tdpf 字段”：干扰字段不改变解析轨迹。"""
+    explicit = request(relays=[relay(auto_reclose=True)], segments=[segment(90.0)])
+    expected = closed_form(explicit)
+    changed = copy.deepcopy(explicit)
+    net = pp.from_json_string(changed["network_json"])
+    net.load.loc[:, "const_z_p_percent"] = 30.0
+    net.load.loc[:, "const_i_p_percent"] = 25.0
+    net.load.loc[:, "const_z_q_percent"] = 20.0
+    net.load.loc[:, "const_i_q_percent"] = 35.0
+    net.line.loc[:, "temperature_degree_celsius"] = 150.0
+    net.line.loc[:, "alpha"] = 0.009
+    net.line.loc[:, "tdpf"] = True
+    changed["network_json"] = pp.to_json(net)
+    baseline_differences = compare(run(explicit), expected)
+    changed_differences = compare(run(changed), expected)
+    assert not baseline_differences, "\n".join(baseline_differences)
+    assert not changed_differences, "\n".join(changed_differences)
+
+
+def test_load_steps_leave_static_and_limited_generator_injections_unscaled():
+    """“不缩放 sgen/gen”：非单位负荷时段以独立两母线净注入解析解核对固定发电与无功上限。"""
+    net = network()
+    pp.create_sgen(net, 7, p_mw=1.2, q_mvar=0.3, scaling=0.7, index=33)
+    pp.create_gen(
+        net, 7, p_mw=0.8, vm_pu=1.08, min_q_mvar=-0.3, max_q_mvar=0.2, index=72
+    )
+    req = request(
+        net,
+        relays=[relay(pickup_a=10000.0)],
+        segments=[segment(15.0, load_scale=1.4), segment(20.0, load_scale=0.6)],
+    )
+    equivalent = pp.from_json_string(req["network_json"])
+    equivalent.gen = equivalent.gen.iloc[:0].copy()
+    pp.create_sgen(equivalent, 7, p_mw=0.8, q_mvar=0.2, index=99)
+    analytic_request = copy.deepcopy(req)
+    analytic_request["network_json"] = pp.to_json(equivalent)
+    expected = closed_form(analytic_request)
+    expected["gen_order"] = [72]
+    for point in expected["segments"]:
+        # At the upper Q limit the remote voltage is strictly below the PV
+        # target, so the saturated PQ equivalent is the physical branch.
+        assert point["bus_vm_pu"][1] < 1.08 - 0.01
+        point["gen_q_mvar"] = [0.2]
+    assert expected["events"] == []
+    differences = compare(run(req), expected)
+    assert not differences, "\n".join(differences)
+
+
 def test_thermal_trip_cooling_reclose_and_solar_energy_balance():
     """“无串流时也继续太阳吸热、对流和辐射”：线性热极限校核热跳闸和冷却重合。"""
     req = request(
