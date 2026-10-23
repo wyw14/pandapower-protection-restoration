@@ -65,7 +65,7 @@
     "numeric_oracle.py": "6f7fa1dfe8ba2cb5115429b8a60251f767d667223ff21392e92086a9b0bed710",
     "pytest.ini": "1c4ea57d78b41c8cdb046467d2069100704adaadfd72025e54ea5c0e1010092c",
     "requirements.txt": "aace7eabd0a1a7203833c5224ce73820db5a5b7df5cfa6522795a165d6f67d06",
-    "test.sh": "02772bf574f437d2342a845e58cef979300a6876f7bcb8b8b524f4219fa25ce8",
+    "test.sh": "e0163da8313e1e33adf86a9253f2bb159e9b9fa341a78a05f873f50d757d61d1",
     "test_trajectory.py": "f7b8ff9b92942943e493061aa29a908cfe146c2e53f27ee060248d664de5066f",
     "validate_completion.py": "68e0f7d9099e562a36bba1ac88a3066c80c8e8fbdd7da2119601e52438001c26",
     "verifier_ledger.py": "d7fe308a4e227af856f9f78a017c2a6bd101a56fe3cde1a3b60fdfa3d74b028d",

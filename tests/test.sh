@@ -18,6 +18,21 @@ reset_reward() {
     mkdir -p /logs/verifier || return 1
     chown 0:0 /logs /logs/verifier || return 1
     chmod 0700 /logs /logs/verifier || return 1
+    # Harbor prefers JSON over text; this invocation owns both output names.
+    local legacy=/logs/verifier/reward.json
+    if [[ -L "$legacy" ]]; then
+        unsafe=1
+    elif [[ -e "$legacy" && ! -f "$legacy" ]]; then
+        printf '%s\n' 'Legacy reward must be a regular file' >&2
+        return 1
+    elif [[ -f "$legacy" ]]; then
+        if [[ "$(stat -c %h -- "$legacy")" != 1 ]]; then
+            unsafe=1
+        else
+            chmod 0600 "$legacy" || return 1
+        fi
+    fi
+    rm -f -- "$legacy" || return 1
     if [[ -L "$reward" ]]; then
         # Replace the link itself without following or chmod-ing its target;
         # the current run still fails because its initial output was unsafe.
