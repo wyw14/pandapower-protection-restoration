@@ -5,7 +5,7 @@ F.2 能源系统。本仓库根目录就是一个 Harbor 题包，保留 instruc
 
 ## 运行
 
-已使用 Harbor 0.24.0。需要 Linux/amd64 Docker、Landlock ABI >= 3 和允许题包独立 Verifier 以 root 引导隔离进程的环境；候选计算以非特权身份运行。强制 Landlock 文件白名单、seccomp 与受信资产权限隔离。任一必要隔离步骤失败都拒绝运行，不以放宽文件访问替代隔离。当前依赖视图复制方案未能满足准备预算，因此未作为兼容降级方案纳入题包。
+已使用 Harbor 0.24.0。需要 Linux/amd64 Docker，允许独立 Verifier 以 root 引导隔离进程，并保留 Docker 默认的 SYS_CHROOT、MKNOD、SETUID、SETGID 能力。候选计算始终以非特权身份运行并启用 seccomp。有可用 Landlock 时使用文件白名单；否则进入构建阶段准备的仅含运行依赖的 chroot，再加入当前候选源码和私有临时目录，测试、参考解和评分文件均不进入该文件系统。两条路径均在运行前实际检查禁读答案、禁写评分、禁网及临时目录写入边界；隔离失败则拒绝运行。依赖视图在镜像构建时创建，不在每次候选请求中复制依赖。
 
 ```sh
 harbor run -p . -a oracle -n 1 -k 1 --job-name oracle-check

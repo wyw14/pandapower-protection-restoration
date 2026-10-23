@@ -95,8 +95,8 @@ def environment_check():
         "architecture": platform.machine(),
         "kernel": platform.release(),
         "bootstrap_uid": os.geteuid(),
-        "required_policy": "uid-landlock-seccomp",
-        "required_landlock_abi": 3,
+        "required_policy": "uid-filesystem-isolation-seccomp",
+        "filesystem_backends": ["landlock ABI >= 3", "dependency-only chroot"],
     }
     try:
         if os.geteuid() != 0:

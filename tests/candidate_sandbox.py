@@ -1,4 +1,4 @@
-"""Mandatory Landlock allowlist, seccomp and root-owned verifier assets."""
+"""Filesystem isolation, mandatory seccomp and root-owned verifier assets."""
 
 import ctypes
 import errno
@@ -15,6 +15,7 @@ import tempfile
 
 NOBODY = 65534
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
 
 
 def _root_only(path):
@@ -28,7 +29,7 @@ def _root_only(path):
 
 
 def _landlock(libc, source, scratch, public_inputs):
-    """Prepare the required filesystem allowlist before dropping identity."""
+    """Prepare the filesystem allowlist when the host supports Landlock."""
     abi = libc.syscall(444, 0, 0, 1)
     if abi < 3:
         reason = os.strerror(ctypes.get_errno()) if abi < 0 else "ABI below 3"
@@ -168,14 +169,16 @@ def restrict(source, scratch, public_inputs):
     libc = ctypes.CDLL(None, use_errno=True)
     libc.syscall.restype = ctypes.c_long
     rules, landlock = _landlock(libc, source, scratch, public_inputs)
+    filesystem = "landlock"
+    identity = NOBODY
     if rules is None:
-        raise RuntimeError(
-            "Landlock ABI >= 3 and a usable ruleset are required; "
-            "candidate was not run: " + str(landlock)
-        )
+        from runtime_root import enter_root
+
+        identity = enter_root(source, scratch, public_inputs)
+        filesystem = "chroot"
     os.setgroups([])
-    os.setgid(NOBODY)
-    os.setuid(NOBODY)
+    os.setgid(identity)
+    os.setuid(identity)
     if libc.prctl(38, 1, 0, 0, 0) != 0:
         raise OSError(ctypes.get_errno(), "PR_SET_NO_NEW_PRIVS")
     if rules is not None:
@@ -204,7 +207,7 @@ def restrict(source, scratch, public_inputs):
         "no_new_privileges": True,
         "dac_root_only": dac_ready,
         "landlock": landlock,
-        "filesystem": "landlock",
+        "filesystem": filesystem,
     }
 
 
@@ -310,6 +313,17 @@ def prepare_sandbox(tests_dir, logs_dir, private_dir):
     os.chown(scratch, NOBODY, NOBODY)
     inputs = folder / "inputs"
     inputs.mkdir(mode=0o755)
+    # Stage source only when a separate filesystem is needed. Dependency
+    # libraries were provisioned at build, outside the verifier deadline.
+    libc = ctypes.CDLL(None, use_errno=True)
+    libc.syscall.restype = ctypes.c_long
+    rules, _ = _landlock(libc, "/app/src", str(scratch), str(inputs))
+    if rules is None:
+        from runtime_root import prepare_root
+
+        prepare_root("/app/src")
+    else:
+        os.close(rules)
     configuration = {
         "source": "/app/src",
         "scratch": str(scratch),
