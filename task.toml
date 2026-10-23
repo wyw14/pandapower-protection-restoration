@@ -8,7 +8,7 @@ authors = [{ name = "wyw14" }]
 keywords = ["pandapower", "AC", "relay-memory", "auto-reclose", "EENS", "event-sensitivity"]
 
 [agent]
-timeout_sec = 3600
+timeout_sec = 10800
 
 [environment]
 build_timeout_sec = 900
