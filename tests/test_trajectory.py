@@ -229,6 +229,114 @@ def test_cooling_gate_delays_reclose_and_preserves_thermal_state():
     assert not differences, "\n".join(differences)
 
 
+@pytest.mark.parametrize("near_threshold", ["memory", "temperature"])
+def test_subthreshold_recovering_state_does_not_trip(near_threshold):
+    """“u 首次达到 1 或受保护线 T 首次达到 limit_c 时跳闸”：未达阈值且下降不构成动作。"""
+    th = conductor(initial_c=179.999999995 if near_threshold == "temperature" else 25.0)
+    r = relay(initial_memory=0.9999999995 if near_threshold == "memory" else 0.1)
+    req = request(network(load=1.0, reactive=0.0), [th], [r], [segment(10.0)])
+    expected = closed_form(req)
+    assert expected["events"] == []
+    assert expected["segments"][0]["relay_memory"][0] < r["initial_memory"]
+    assert expected["segments"][0]["temperature_c"][0] < th["limit_c"]
+    assert expected["unserved_energy_mwh"] == 0.0
+    differences = compare(run(req), expected)
+    assert not differences, "\n".join(differences)
+
+
+@pytest.mark.parametrize("cause", ["overcurrent", "thermal"])
+def test_subthreshold_state_that_crosses_upward_still_trips(cause):
+    """“u 首次达到 1 或受保护线 T 首次达到 limit_c 时跳闸”：真实上穿须动作，不能一概忽略近阈值。"""
+    th = conductor()
+    r = relay()
+    if cause == "overcurrent":
+        r["initial_memory"] = 0.9999999995
+    else:
+        th.update(initial_c=179.999999995, h_w_per_mk=0.0)
+        r["pickup_a"] = 10000.0
+    req = request(thermal=[th], relays=[r], segments=[segment(10.0)])
+    expected = closed_form(req)
+    assert len(expected["events"]) == 1
+    assert expected["events"][0]["cause"] == cause
+    assert expected["events"][0]["time_s"] > 0.0
+    assert expected["segments"][0]["locked"] == [True]
+    differences = compare(run(req), expected)
+    assert not differences, "\n".join(differences)
+
+
+def test_equilibrium_above_cooling_gate_never_becomes_ready():
+    """“必须同时满足死区 dead_time_s 已过、T<=reclose_c”：死区已过不能代替未满足的冷却门。"""
+    th = conductor(
+        initial_c=60.0, capacity_j_per_mk=20.0, h_w_per_mk=2.0, limit_c=120.0
+    )
+    r = relay(pickup_a=10.0, time_scale_s=5.0, auto_reclose=True, reclose_c=30.0)
+    # With the line open, the exact equilibrium lies strictly above the gate.
+    # The temperature decreases toward it and never reaches reclose_c.
+    solar = th["h_w_per_mk"] * (r["reclose_c"] + 5e-9 - 25.0)
+    req = request(
+        network(load=1.0, reactive=0.0),
+        [th],
+        [r],
+        [segment(300.0, solar_w_per_m=solar)],
+    )
+    expected = closed_form(req)
+    assert [event["action"] for event in expected["events"]] == ["trip"]
+    assert expected["segments"][0]["temperature_c"][0] > r["reclose_c"]
+    assert expected["segments"][0]["locked"] == [False]
+    differences = compare(run(req), expected)
+    assert not differences, "\n".join(differences)
+
+
+def test_dead_time_gate_cannot_reclose_before_its_actual_deadline():
+    """“必须同时满足死区 dead_time_s 已过、T<=reclose_c”：冷却已满足时仍须完整等待死区。"""
+    req = request(relays=[relay(auto_reclose=True, dead_time_s=5.0, reclose_c=80.0)])
+    trip = closed_form(req)["events"][0]["time_s"]
+    req["segments"] = [segment(trip + 5.0 - 5e-9)]
+    expected = closed_form(req)
+    assert [event["action"] for event in expected["events"]] == ["trip"]
+    assert expected["segments"][0]["switch_closed"] == [False]
+    assert expected["segments"][0]["locked"] == [False]
+    differences = compare(run(req), expected)
+    assert not differences, "\n".join(differences)
+
+
+def test_nonlinear_cooling_reclose_response_matches_independent_quadrature():
+    """“包含事件时间移动，不能冻结名义动作时刻”：电阻反馈与辐射冷却的完整重合轨迹独立求积。"""
+    from independent_nonlinear import pickup_response, trajectory
+
+    req = request(
+        thermal=[
+            conductor(
+                initial_c=60.0,
+                capacity_j_per_mk=20.0,
+                alpha_per_k=0.004,
+                emissivity=0.7,
+            )
+        ],
+        relays=[
+            relay(time_scale_s=5.0, auto_reclose=True, dead_time_s=3.0, reclose_c=45.0)
+        ],
+        segments=[segment(110.0, solar_w_per_m=0.4)],
+        sensitivity=dict(switch=201),
+    )
+    expected = trajectory(req)
+    coarse_response = pickup_response(req, 0.02)
+    fine_response = pickup_response(req, 0.01)
+    response_error = normalized_distance(coarse_response, fine_response)
+    assert response_error < 0.1, (
+        "Independent response error consumes too much tolerance"
+    )
+    expected["sensitivity"] = fine_response
+    assert [event["action"] for event in expected["events"]] == [
+        "trip",
+        "reclose",
+        "trip",
+    ]
+    assert abs(fine_response["d_event_time_s_d_pickup_a"][1]) > 1e-3
+    differences = compare(run(req), expected)
+    assert not differences, "\n".join(differences)
+
+
 @pytest.mark.parametrize(
     "omitted", [("solar_w_per_m",), ("load_scale",), ("solar_w_per_m", "load_scale")]
 )

@@ -8,6 +8,13 @@
     "test_trajectory.py::test_overcurrent_memory_survives_load_steps_and_exponential_reset",
     "test_trajectory.py::test_deadtime_reclose_keeps_memory_and_second_trip_locks",
     "test_trajectory.py::test_cooling_gate_delays_reclose_and_preserves_thermal_state",
+    "test_trajectory.py::test_subthreshold_recovering_state_does_not_trip[memory]",
+    "test_trajectory.py::test_subthreshold_recovering_state_does_not_trip[temperature]",
+    "test_trajectory.py::test_subthreshold_state_that_crosses_upward_still_trips[overcurrent]",
+    "test_trajectory.py::test_subthreshold_state_that_crosses_upward_still_trips[thermal]",
+    "test_trajectory.py::test_equilibrium_above_cooling_gate_never_becomes_ready",
+    "test_trajectory.py::test_dead_time_gate_cannot_reclose_before_its_actual_deadline",
+    "test_trajectory.py::test_nonlinear_cooling_reclose_response_matches_independent_quadrature",
     "test_trajectory.py::test_optional_weather_and_load_defaults_preserve_the_complete_event_chain[omitted0]",
     "test_trajectory.py::test_optional_weather_and_load_defaults_preserve_the_complete_event_chain[omitted1]",
     "test_trajectory.py::test_optional_weather_and_load_defaults_preserve_the_complete_event_chain[omitted2]",
@@ -59,11 +66,12 @@
     "pytest.ini": "1c4ea57d78b41c8cdb046467d2069100704adaadfd72025e54ea5c0e1010092c",
     "requirements.txt": "aace7eabd0a1a7203833c5224ce73820db5a5b7df5cfa6522795a165d6f67d06",
     "test.sh": "02772bf574f437d2342a845e58cef979300a6876f7bcb8b8b524f4219fa25ce8",
-    "test_trajectory.py": "bbc3e50592638902ee0399d5af3eff2ce7e26ff315a58c0a2e47f6fe2410d334",
+    "test_trajectory.py": "f7b8ff9b92942943e493061aa29a908cfe146c2e53f27ee060248d664de5066f",
     "validate_completion.py": "68e0f7d9099e562a36bba1ac88a3066c80c8e8fbdd7da2119601e52438001c26",
     "verifier_ledger.py": "d7fe308a4e227af856f9f78a017c2a6bd101a56fe3cde1a3b60fdfa3d74b028d",
     "wheels-sha256.txt": "326635e30627b8b52bb5383d4fbd505e64906f637c3fd42b45b0bca414b4de5c",
     "wire_codec.py": "44a64022950a3022c265bf3be72a4e6fd5e841366b6eb3d4ddeaf44853eefd47",
-    "runtime_root.py": "83aa513f65009360bce9220e74048b7cf0bfc416d06c718e44daf6d1d4317f97"
+    "runtime_root.py": "83aa513f65009360bce9220e74048b7cf0bfc416d06c718e44daf6d1d4317f97",
+    "independent_nonlinear.py": "11ea13f06644539c9aa5d0e0cbf3acd91a8f8219e635c5ee215572e0606a2432"
   }
 }

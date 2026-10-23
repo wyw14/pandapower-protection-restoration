@@ -282,56 +282,59 @@ def trajectory(net, thermal, relays, segments):
     deadlines = [math.inf] * m
     events, records = [], []
     time = 0.0
+
+    def transition(j, action, cause):
+        relay = relays[j]
+        if action == "trip":
+            closed[j] = False
+            counts[j] += 1
+            deadlines[j] = (
+                time + relay["dead_time_s"]
+                if relay["auto_reclose"] and counts[j] == 1
+                else math.inf
+            )
+        else:
+            closed[j] = True
+            deadlines[j] = math.inf
+        events.append(
+            dict(
+                time_s=float(time),
+                switch=relay["switch"],
+                line=relay["line"],
+                action=action,
+                cause=cause,
+                trip_count=counts[j],
+            )
+        )
+        if len(events) > 3 * m:
+            raise RuntimeError("invalid protection transition cycle")
+
     for segment in segments:
         start, end = time, time + segment["duration_s"]
+        pending = None
         while True:
-            changed = False
+            # A directed root identifies the physical transition. Its numerical
+            # state may lie on either side of the threshold by rounding; testing
+            # a neighbourhood here would also trigger unrelated subthreshold
+            # states, including initial states that are cooling or resetting.
+            if pending is not None:
+                transition(*pending)
+                pending = None
             for j in sorted(range(m), key=lambda q: relays[q]["switch"]):
                 relay = relays[j]
                 k = relay["thermal_position"]
-                action = cause = None
-                if closed[j] and (
-                    state[n + j] >= 1 - 1e-9 or state[k] >= thermal[k]["limit_c"] - 1e-8
-                ):
-                    cause = "overcurrent" if state[n + j] >= 1 - 1e-9 else "thermal"
-                    action = "trip"
-                    closed[j] = False
-                    counts[j] += 1
-                    deadlines[j] = (
-                        time + relay["dead_time_s"]
-                        if relay["auto_reclose"] and counts[j] == 1
-                        else math.inf
-                    )
-                    if cause == "overcurrent":
-                        state[n + j] = 1.0
-                elif (
+                if (
                     not closed[j]
                     and math.isfinite(deadlines[j])
-                    and time >= deadlines[j] - 1e-9
-                    and state[k] <= relay["reclose_c"] + 1e-8
+                    and time >= deadlines[j]
+                    and state[k] <= relay["reclose_c"]
                 ):
-                    action, cause = "reclose", "ready"
-                    closed[j] = True
-                    deadlines[j] = math.inf
-                if action:
-                    changed = True
-                    events.append(
-                        dict(
-                            time_s=float(time),
-                            switch=relay["switch"],
-                            line=relay["line"],
-                            action=action,
-                            cause=cause,
-                            trip_count=counts[j],
-                        )
-                    )
-            if len(events) > 3 * m:
-                raise RuntimeError("invalid protection transition cycle")
+                    transition(j, "reclose", "ready")
             grid = Grid(net, thermal, relays, segment, closed)
-            if time >= end - 1e-9:
+            if time >= end:
                 break
-            stop = min([end] + [v for v in deadlines if time + 1e-9 < v < end])
-            roots = []
+            stop = min([end] + [v for v in deadlines if time < v < end])
+            roots, transitions = [], []
             for j, relay in enumerate(relays):
                 k = relay["thermal_position"]
                 if closed[j]:
@@ -342,6 +345,7 @@ def trajectory(net, thermal, relays, segments):
                     memory.direction = 1
                     memory.terminal = True
                     roots.append(memory)
+                    transitions.append((j, "trip", "overcurrent"))
 
                     def temperature(t, y, k=k):
                         return y[k] - thermal[k]["limit_c"]
@@ -349,7 +353,8 @@ def trajectory(net, thermal, relays, segments):
                     temperature.direction = 1
                     temperature.terminal = True
                     roots.append(temperature)
-                elif math.isfinite(deadlines[j]) and time >= deadlines[j] - 1e-9:
+                    transitions.append((j, "trip", "thermal"))
+                elif math.isfinite(deadlines[j]) and time >= deadlines[j]:
 
                     def cooling(t, y, k=k, threshold=relay["reclose_c"]):
                         return y[k] - threshold
@@ -357,6 +362,7 @@ def trajectory(net, thermal, relays, segments):
                     cooling.direction = -1
                     cooling.terminal = True
                     roots.append(cooling)
+                    transitions.append((j, "reclose", "ready"))
             integrated = solve_ivp(
                 grid.rhs,
                 (time, stop),
@@ -370,7 +376,11 @@ def trajectory(net, thermal, relays, segments):
             if not integrated.success or not np.all(np.isfinite(integrated.y[:, -1])):
                 raise RuntimeError("hybrid trajectory integration failed")
             next_time = float(integrated.t[-1])
-            if next_time <= time + 1e-12 and not changed:
+            if roots:
+                hits = [i for i, times in enumerate(integrated.t_events) if len(times)]
+                if hits:
+                    pending = transitions[hits[0]]
+            if next_time <= time and pending is None:
                 raise RuntimeError("hybrid solver did not advance")
             time, state = next_time, integrated.y[:, -1]
         point = grid.electrical(state[:n])
