@@ -58,20 +58,21 @@
   ],
   "test_files_sha256": {
     "analytic_oracle.py": "d6693e0c3d34021c3621af67faeef5876e651040d4dd7b5e510277a97eef0461",
-    "candidate_proxy.py": "b35dbf41f6c5a52ae0570a882616f590a0c62d537d8c4a648305b7f06c3a54b3",
+    "candidate_proxy.py": "469cf587a0b565aecc454f10a5f15fceeb5e99cd0abb3a981b30f4b54603a42a",
     "candidate_sandbox.py": "96aa485b07dd831c95183bd7ecd550ce1e7662e8ce07be88d20179e547fb65d3",
     "candidate_worker.py": "7fc228f8979bacc811ece29e69bd3bdb29556da76dc3d642bc64d6401cfa762a",
     "grade.py": "fea0e57dbc287e055ffdcbad0cbc8a46b384346f08c48afef64357bb9b034f3e",
+    "independent_nonlinear.py": "11ea13f06644539c9aa5d0e0cbf3acd91a8f8219e635c5ee215572e0606a2432",
     "numeric_oracle.py": "6f7fa1dfe8ba2cb5115429b8a60251f767d667223ff21392e92086a9b0bed710",
     "pytest.ini": "1c4ea57d78b41c8cdb046467d2069100704adaadfd72025e54ea5c0e1010092c",
     "requirements.txt": "aace7eabd0a1a7203833c5224ce73820db5a5b7df5cfa6522795a165d6f67d06",
+    "runtime_root.py": "83aa513f65009360bce9220e74048b7cf0bfc416d06c718e44daf6d1d4317f97",
+    "scoring.json": "d0e8c2b4561276012665939fe287799b06323ef5e2d350fdd611c3e3c6f5152b",
     "test.sh": "e0163da8313e1e33adf86a9253f2bb159e9b9fa341a78a05f873f50d757d61d1",
     "test_trajectory.py": "f7b8ff9b92942943e493061aa29a908cfe146c2e53f27ee060248d664de5066f",
-    "validate_completion.py": "68e0f7d9099e562a36bba1ac88a3066c80c8e8fbdd7da2119601e52438001c26",
-    "verifier_ledger.py": "d7fe308a4e227af856f9f78a017c2a6bd101a56fe3cde1a3b60fdfa3d74b028d",
+    "validate_completion.py": "aef9a7f911299473f071d14db7b9d7c20e43705685fb188e30f5a24cfe0c02c3",
+    "verifier_ledger.py": "74458e69c3c613bd612dafa8a7a490c7aeb68ea10456725e8c5249ea7641c663",
     "wheels-sha256.txt": "326635e30627b8b52bb5383d4fbd505e64906f637c3fd42b45b0bca414b4de5c",
-    "wire_codec.py": "44a64022950a3022c265bf3be72a4e6fd5e841366b6eb3d4ddeaf44853eefd47",
-    "runtime_root.py": "83aa513f65009360bce9220e74048b7cf0bfc416d06c718e44daf6d1d4317f97",
-    "independent_nonlinear.py": "11ea13f06644539c9aa5d0e0cbf3acd91a8f8219e635c5ee215572e0606a2432"
+    "wire_codec.py": "44a64022950a3022c265bf3be72a4e6fd5e841366b6eb3d4ddeaf44853eefd47"
   }
 }

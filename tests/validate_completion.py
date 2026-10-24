@@ -2,12 +2,46 @@
 
 import hashlib
 import json
+import math
 from pathlib import Path
 
 
 def _require(condition, message):
     if not condition:
         raise ValueError(message)
+
+
+def score_tests(expected, failed):
+    """Sum independent behavior contributions using the authenticated declaration."""
+    declaration = json.loads(_read(Path(__file__).with_name("scoring.json")))
+    _require(declaration.get("schema_version") == 1, "Unsupported scoring schema")
+    _require(declaration.get("gate_tests") == [], "Unexpected scientific hard gates")
+    entries = declaration["tests"]
+    _require(set(entries) == set(expected), "Scoring identities differ from contract")
+    weights = {}
+    for nodeid in expected:
+        entry = entries[nodeid]
+        value = entry["weight"]
+        _require(
+            type(value) in (int, float) and math.isfinite(value) and 0 < value <= 1,
+            "Invalid scientific weight: " + nodeid,
+        )
+        _require(
+            isinstance(entry.get("rationale"), str) and entry["rationale"].strip(),
+            "Missing scientific weight rationale: " + nodeid,
+        )
+        weights[nodeid] = value
+    _require(abs(math.fsum(weights.values()) - 1.0) <= 1e-12, "Weights do not sum to one")
+    contributions = {
+        nodeid: {"weight": weights[nodeid], "passed": nodeid not in failed,
+                 "earned": 0.0 if nodeid in failed else weights[nodeid]}
+        for nodeid in expected
+    }
+    earned = math.fsum(item["earned"] for item in contributions.values())
+    # Preserve exact endpoint polarity without rounding away a small failure.
+    reward = 1.0 if not failed else (0.0 if len(failed) == len(expected) else earned)
+    _require(0 <= reward <= 1 and (not failed or reward < 1), "Invalid score aggregation")
+    return reward, contributions
 
 
 def validate_report(manifest, data, tree, pytest_status):
@@ -26,6 +60,9 @@ def validate_report(manifest, data, tree, pytest_status):
         "Session exit status mismatch",
     )
     _require(not data["collection_errors"], "Collection failed")
+    _require(isinstance(data.get("execution_errors"), list),
+             "Missing trusted candidate-execution status")
+    _require(not data["execution_errors"], "Candidate execution did not complete safely")
     _require(
         sorted(data["collected"]) == sorted(expected),
         "Collected identities differ from contract",
@@ -102,6 +139,7 @@ def validate_report(manifest, data, tree, pytest_status):
         _require(
             int(suite.get(field, "-1")) == value, "JUnit summary mismatch: " + field
         )
+    earned, contributions = score_tests(expected, failed)
     return {
         "completion_state": "COMPLETE",
         "collection_complete": True,
@@ -111,7 +149,8 @@ def validate_report(manifest, data, tree, pytest_status):
         "passed_tests": len(expected) - len(failed),
         "failed_phases": len(failed),
         "warnings_count": len(data["warnings"]),
-        "reward": int(not failed),
+        "reward": earned,
+        "score_contributions": contributions,
     }
 
 
@@ -153,12 +192,19 @@ def validate_seal(manifest_path: Path, logs: Path, tree):
         "collected_tests",
         "completed_tests",
         "passed_tests",
-        "reward",
     ):
         _require(
             type(grading[field]) is int and grading[field] == result[field],
             "Grading summary mismatch: " + field,
         )
+    _require(
+        type(grading["reward"]) in (int, float)
+        and math.isfinite(grading["reward"])
+        and grading["reward"] == result["reward"],
+        "Grading summary mismatch: reward",
+    )
+    _require(grading.get("score_contributions") == result["score_contributions"],
+             "Grading contribution mismatch")
     for field in ("failed_phases", "warnings_count"):
         if field in grading:
             _require(

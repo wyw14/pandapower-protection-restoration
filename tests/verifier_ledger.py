@@ -2,6 +2,7 @@
 
 import json
 import os
+import sys
 from pathlib import Path
 
 COLLECTED = []
@@ -58,6 +59,7 @@ def pytest_sessionfinish(session, exitstatus):
                 "failures": FAILURES,
                 "warnings": WARNINGS,
                 "exitstatus": int(exitstatus),
+                "execution_errors": list(sys.modules["candidate_proxy"].EXECUTION_ERRORS),
             },
             indent=2,
         ),

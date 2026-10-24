@@ -1,0 +1,339 @@
+{
+  "schema_version": 1,
+  "weight_policy": {
+    "aggregation": "Sum the positive weights of passing scientific tests after complete, trusted execution. Equivalent parameter cases divide a fixed behavior budget.",
+    "basis": "Coupled physical behavior and state evolution carry the main contribution; input rejection and interface compatibility have smaller, separate budgets. Adding parameter cases does not increase a behavior's total budget.",
+    "hard_gates": [
+      "Exact complete collection and setup/call/teardown evidence",
+      "Matching JUnit, ledger, exit status and trusted source hashes",
+      "No candidate transport crash, local deadline, malformed protocol, verifier timeout or cleanup failure"
+    ]
+  },
+  "gate_tests": [],
+  "tests": {
+    "test_trajectory.py::test_terminal_ct_and_per_circuit_heat_use_distinct_currents[1-0.0-from-5.0]": {
+      "weight": 0.015,
+      "priority": "core",
+      "group": "electrical",
+      "rationale": "Separate terminal CT current from per-circuit Joule heating, including charging and parallel circuits. Parameter case: 1-0.0-from-5.0."
+    },
+    "test_trajectory.py::test_terminal_ct_and_per_circuit_heat_use_distinct_currents[2-0.0-from-5.0]": {
+      "weight": 0.015,
+      "priority": "core",
+      "group": "electrical",
+      "rationale": "Separate terminal CT current from per-circuit Joule heating, including charging and parallel circuits. Parameter case: 2-0.0-from-5.0."
+    },
+    "test_trajectory.py::test_terminal_ct_and_per_circuit_heat_use_distinct_currents[1-2500.0-from-0.0]": {
+      "weight": 0.015,
+      "priority": "core",
+      "group": "electrical",
+      "rationale": "Separate terminal CT current from per-circuit Joule heating, including charging and parallel circuits. Parameter case: 1-2500.0-from-0.0."
+    },
+    "test_trajectory.py::test_terminal_ct_and_per_circuit_heat_use_distinct_currents[1-2500.0-to-0.0]": {
+      "weight": 0.015,
+      "priority": "core",
+      "group": "electrical",
+      "rationale": "Separate terminal CT current from per-circuit Joule heating, including charging and parallel circuits. Parameter case: 1-2500.0-to-0.0."
+    },
+    "test_trajectory.py::test_overcurrent_memory_survives_load_steps_and_exponential_reset": {
+      "weight": 0.05,
+      "priority": "core",
+      "group": "protection",
+      "rationale": "Retain inverse-time memory across load segments and model sub-pickup recovery."
+    },
+    "test_trajectory.py::test_deadtime_reclose_keeps_memory_and_second_trip_locks": {
+      "weight": 0.05,
+      "priority": "core",
+      "group": "restoration",
+      "rationale": "Preserve protection history across one reclose and lock the second trip."
+    },
+    "test_trajectory.py::test_cooling_gate_delays_reclose_and_preserves_thermal_state": {
+      "weight": 0.05,
+      "priority": "core",
+      "group": "restoration",
+      "rationale": "Require actual cooling before restoration and retain conductor temperature."
+    },
+    "test_trajectory.py::test_subthreshold_recovering_state_does_not_trip[memory]": {
+      "weight": 0.02,
+      "priority": "core",
+      "group": "protection",
+      "rationale": "Reject spurious threshold actions while a legal near-threshold state is recovering. Parameter case: memory."
+    },
+    "test_trajectory.py::test_subthreshold_recovering_state_does_not_trip[temperature]": {
+      "weight": 0.02,
+      "priority": "core",
+      "group": "protection",
+      "rationale": "Reject spurious threshold actions while a legal near-threshold state is recovering. Parameter case: temperature."
+    },
+    "test_trajectory.py::test_subthreshold_state_that_crosses_upward_still_trips[overcurrent]": {
+      "weight": 0.02,
+      "priority": "core",
+      "group": "protection",
+      "rationale": "Detect genuine upward overcurrent-memory and thermal crossings near the action boundary. Parameter case: overcurrent."
+    },
+    "test_trajectory.py::test_subthreshold_state_that_crosses_upward_still_trips[thermal]": {
+      "weight": 0.02,
+      "priority": "core",
+      "group": "protection",
+      "rationale": "Detect genuine upward overcurrent-memory and thermal crossings near the action boundary. Parameter case: thermal."
+    },
+    "test_trajectory.py::test_equilibrium_above_cooling_gate_never_becomes_ready": {
+      "weight": 0.025,
+      "priority": "core",
+      "group": "restoration",
+      "rationale": "Keep restoration blocked when cooling approaches an equilibrium above the gate."
+    },
+    "test_trajectory.py::test_dead_time_gate_cannot_reclose_before_its_actual_deadline": {
+      "weight": 0.025,
+      "priority": "core",
+      "group": "restoration",
+      "rationale": "Keep the switch open until the true dead-time deadline."
+    },
+    "test_trajectory.py::test_nonlinear_cooling_reclose_response_matches_independent_quadrature": {
+      "weight": 0.05,
+      "priority": "core",
+      "group": "response",
+      "rationale": "Couple nonlinear thermal evolution, restoration timing and total pickup response."
+    },
+    "test_trajectory.py::test_optional_weather_and_load_defaults_preserve_the_complete_event_chain[omitted0]": {
+      "weight": 0.01,
+      "priority": "supporting",
+      "group": "interface",
+      "rationale": "Apply specified weather and loading defaults without changing the complete event chain. Parameter case: omitted0."
+    },
+    "test_trajectory.py::test_optional_weather_and_load_defaults_preserve_the_complete_event_chain[omitted1]": {
+      "weight": 0.01,
+      "priority": "supporting",
+      "group": "interface",
+      "rationale": "Apply specified weather and loading defaults without changing the complete event chain. Parameter case: omitted1."
+    },
+    "test_trajectory.py::test_optional_weather_and_load_defaults_preserve_the_complete_event_chain[omitted2]": {
+      "weight": 0.01,
+      "priority": "supporting",
+      "group": "interface",
+      "rationale": "Apply specified weather and loading defaults without changing the complete event chain. Parameter case: omitted2."
+    },
+    "test_trajectory.py::test_native_zip_and_temperature_flags_do_not_change_the_defined_model": {
+      "weight": 0.025,
+      "priority": "core",
+      "group": "electrical",
+      "rationale": "Respect the specified thermal and load model despite unrelated native solver flags."
+    },
+    "test_trajectory.py::test_load_steps_leave_static_and_limited_generator_injections_unscaled": {
+      "weight": 0.04,
+      "priority": "core",
+      "group": "electrical",
+      "rationale": "Scale loads while preserving generator injection and reactive-limit semantics."
+    },
+    "test_trajectory.py::test_thermal_trip_cooling_reclose_and_solar_energy_balance": {
+      "weight": 0.05,
+      "priority": "core",
+      "group": "thermal",
+      "rationale": "Couple heat balance, thermal trip, cooling and the restored trajectory."
+    },
+    "test_trajectory.py::test_parallel_trip_redistribution_cascades_and_counts_unserved_energy[0.0]": {
+      "weight": 0.03,
+      "priority": "core",
+      "group": "network",
+      "rationale": "Resolve current redistribution, cascading switching and accumulated supply loss. Parameter case: 0.0."
+    },
+    "test_trajectory.py::test_parallel_trip_redistribution_cascades_and_counts_unserved_energy[500.0]": {
+      "weight": 0.03,
+      "priority": "core",
+      "group": "network",
+      "rationale": "Resolve current redistribution, cascading switching and accumulated supply loss. Parameter case: 500.0."
+    },
+    "test_trajectory.py::test_unprotected_thermal_line_carries_redistributed_load_after_trip": {
+      "weight": 0.04,
+      "priority": "core",
+      "group": "network",
+      "rationale": "Retain unprotected conductors in post-trip electrical and thermal evolution."
+    },
+    "test_trajectory.py::test_cascade_response_includes_movement_of_both_event_times": {
+      "weight": 0.04,
+      "priority": "core",
+      "group": "response",
+      "rationale": "Include movement of both cascade events in the total pickup response."
+    },
+    "test_trajectory.py::test_single_trip_event_and_supply_derivatives_have_closed_forms": {
+      "weight": 0.035,
+      "priority": "core",
+      "group": "response",
+      "rationale": "Return event-time and lost-supply derivatives consistent with the physical single-trip limit."
+    },
+    "test_trajectory.py::test_local_sensitivity_near_fixed_boundary_preserves_valid_branch[before_end-0.001]": {
+      "weight": 0.01125,
+      "priority": "core",
+      "group": "response",
+      "rationale": "Differentiate on the promised local branch close to segment and horizon boundaries. Parameter case: before_end-0.001."
+    },
+    "test_trajectory.py::test_local_sensitivity_near_fixed_boundary_preserves_valid_branch[before_end-1e-05]": {
+      "weight": 0.01125,
+      "priority": "core",
+      "group": "response",
+      "rationale": "Differentiate on the promised local branch close to segment and horizon boundaries. Parameter case: before_end-1e-05."
+    },
+    "test_trajectory.py::test_local_sensitivity_near_fixed_boundary_preserves_valid_branch[before_load_change-0.001]": {
+      "weight": 0.01125,
+      "priority": "core",
+      "group": "response",
+      "rationale": "Differentiate on the promised local branch close to segment and horizon boundaries. Parameter case: before_load_change-0.001."
+    },
+    "test_trajectory.py::test_local_sensitivity_near_fixed_boundary_preserves_valid_branch[after_load_change-0.001]": {
+      "weight": 0.01125,
+      "priority": "core",
+      "group": "response",
+      "rationale": "Differentiate on the promised local branch close to segment and horizon boundaries. Parameter case: after_load_change-0.001."
+    },
+    "test_trajectory.py::test_reclose_response_includes_cooling_and_memory_dependent_second_trip": {
+      "weight": 0.04,
+      "priority": "core",
+      "group": "response",
+      "rationale": "Propagate pickup response through cooling, retained memory and the second trip."
+    },
+    "test_trajectory.py::test_downstream_isolation_makes_upstream_backup_memory_recover": {
+      "weight": 0.04,
+      "priority": "core",
+      "group": "network",
+      "rationale": "Model selective downstream isolation, upstream recovery and resulting supply loss."
+    },
+    "test_trajectory.py::test_reindexed_network_and_permuted_state_vectors_preserve_physics": {
+      "weight": 0.03,
+      "priority": "supporting",
+      "group": "interface",
+      "rationale": "Preserve native equipment identity and physical results under legal index and state ordering changes."
+    },
+    "test_trajectory.py::test_invalid_physical_contract_is_rejected[duplicate]": {
+      "weight": 0.002,
+      "priority": "supporting",
+      "group": "validation",
+      "rationale": "Reject a specified invalid physical or structural input without accepting a fictitious trajectory. Parameter case: duplicate."
+    },
+    "test_trajectory.py::test_invalid_physical_contract_is_rejected[pickup]": {
+      "weight": 0.002,
+      "priority": "supporting",
+      "group": "validation",
+      "rationale": "Reject a specified invalid physical or structural input without accepting a fictitious trajectory. Parameter case: pickup."
+    },
+    "test_trajectory.py::test_invalid_physical_contract_is_rejected[memory]": {
+      "weight": 0.002,
+      "priority": "supporting",
+      "group": "validation",
+      "rationale": "Reject a specified invalid physical or structural input without accepting a fictitious trajectory. Parameter case: memory."
+    },
+    "test_trajectory.py::test_invalid_physical_contract_is_rejected[reclose]": {
+      "weight": 0.002,
+      "priority": "supporting",
+      "group": "validation",
+      "rationale": "Reject a specified invalid physical or structural input without accepting a fictitious trajectory. Parameter case: reclose."
+    },
+    "test_trajectory.py::test_invalid_physical_contract_is_rejected[switch]": {
+      "weight": 0.002,
+      "priority": "supporting",
+      "group": "validation",
+      "rationale": "Reject a specified invalid physical or structural input without accepting a fictitious trajectory. Parameter case: switch."
+    },
+    "test_trajectory.py::test_invalid_physical_contract_is_rejected[bool]": {
+      "weight": 0.002,
+      "priority": "supporting",
+      "group": "validation",
+      "rationale": "Reject a specified invalid physical or structural input without accepting a fictitious trajectory. Parameter case: bool."
+    },
+    "test_trajectory.py::test_invalid_physical_contract_is_rejected[nan]": {
+      "weight": 0.002,
+      "priority": "supporting",
+      "group": "validation",
+      "rationale": "Reject a specified invalid physical or structural input without accepting a fictitious trajectory. Parameter case: nan."
+    },
+    "test_trajectory.py::test_invalid_physical_contract_is_rejected[missing_field]": {
+      "weight": 0.002,
+      "priority": "supporting",
+      "group": "validation",
+      "rationale": "Reject a specified invalid physical or structural input without accepting a fictitious trajectory. Parameter case: missing_field."
+    },
+    "test_trajectory.py::test_invalid_physical_contract_is_rejected[unknown_json]": {
+      "weight": 0.002,
+      "priority": "supporting",
+      "group": "validation",
+      "rationale": "Reject a specified invalid physical or structural input without accepting a fictitious trajectory. Parameter case: unknown_json."
+    },
+    "test_trajectory.py::test_invalid_physical_contract_is_rejected[empty_thermal]": {
+      "weight": 0.002,
+      "priority": "supporting",
+      "group": "validation",
+      "rationale": "Reject a specified invalid physical or structural input without accepting a fictitious trajectory. Parameter case: empty_thermal."
+    },
+    "test_trajectory.py::test_invalid_physical_contract_is_rejected[nonlist_segments]": {
+      "weight": 0.002,
+      "priority": "supporting",
+      "group": "validation",
+      "rationale": "Reject a specified invalid physical or structural input without accepting a fictitious trajectory. Parameter case: nonlist_segments."
+    },
+    "test_trajectory.py::test_invalid_physical_contract_is_rejected[duplicate_thermal]": {
+      "weight": 0.002,
+      "priority": "supporting",
+      "group": "validation",
+      "rationale": "Reject a specified invalid physical or structural input without accepting a fictitious trajectory. Parameter case: duplicate_thermal."
+    },
+    "test_trajectory.py::test_invalid_physical_contract_is_rejected[reclose_type]": {
+      "weight": 0.002,
+      "priority": "supporting",
+      "group": "validation",
+      "rationale": "Reject a specified invalid physical or structural input without accepting a fictitious trajectory. Parameter case: reclose_type."
+    },
+    "test_trajectory.py::test_invalid_physical_contract_is_rejected[absolute_zero]": {
+      "weight": 0.002,
+      "priority": "supporting",
+      "group": "validation",
+      "rationale": "Reject a specified invalid physical or structural input without accepting a fictitious trajectory. Parameter case: absolute_zero."
+    },
+    "test_trajectory.py::test_invalid_physical_contract_is_rejected[negative_capacity]": {
+      "weight": 0.002,
+      "priority": "supporting",
+      "group": "validation",
+      "rationale": "Reject a specified invalid physical or structural input without accepting a fictitious trajectory. Parameter case: negative_capacity."
+    },
+    "test_trajectory.py::test_invalid_physical_contract_is_rejected[emissivity_above_one]": {
+      "weight": 0.002,
+      "priority": "supporting",
+      "group": "validation",
+      "rationale": "Reject a specified invalid physical or structural input without accepting a fictitious trajectory. Parameter case: emissivity_above_one."
+    },
+    "test_trajectory.py::test_invalid_physical_contract_is_rejected[initial_overtemperature]": {
+      "weight": 0.002,
+      "priority": "supporting",
+      "group": "validation",
+      "rationale": "Reject a specified invalid physical or structural input without accepting a fictitious trajectory. Parameter case: initial_overtemperature."
+    },
+    "test_trajectory.py::test_invalid_physical_contract_is_rejected[unknown_sensitivity]": {
+      "weight": 0.002,
+      "priority": "supporting",
+      "group": "validation",
+      "rationale": "Reject a specified invalid physical or structural input without accepting a fictitious trajectory. Parameter case: unknown_sensitivity."
+    },
+    "test_trajectory.py::test_invalid_physical_contract_is_rejected[nonline_switch]": {
+      "weight": 0.002,
+      "priority": "supporting",
+      "group": "validation",
+      "rationale": "Reject a specified invalid physical or structural input without accepting a fictitious trajectory. Parameter case: nonline_switch."
+    },
+    "test_trajectory.py::test_invalid_physical_contract_is_rejected[initially_open]": {
+      "weight": 0.002,
+      "priority": "supporting",
+      "group": "validation",
+      "rationale": "Reject a specified invalid physical or structural input without accepting a fictitious trajectory. Parameter case: initially_open."
+    },
+    "test_trajectory.py::test_cli_and_repeated_requests_are_independently_correct": {
+      "weight": 0.03,
+      "priority": "supporting",
+      "group": "interface",
+      "rationale": "Deliver correct JSON CLI output and independent repeated requests, including recovery after rejection."
+    },
+    "test_trajectory.py::test_native_three_winding_q_limits_and_nonlinear_switching_converge_independently": {
+      "weight": 0.065,
+      "priority": "core",
+      "group": "electrical",
+      "rationale": "Preserve native transformer, switch and reactive-limit physics in nonlinear post-trip operation."
+    }
+  }
+}
